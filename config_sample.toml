@@ -1,0 +1,28 @@
+#
+# Sample configuration for slacktogo
+#
+
+#BindAddr= # Default is to bind to all interfaces
+Port=8080
+#SSLCrt="domain_tld.crt" # I highly recommmend using SSL!
+#SSLKey="domain_tld.key"
+
+[Team.foo] # First Team
+ID="T01234FOO"
+URL="https://foo.slack.com/services/hooks/incoming-webhook?token=12345abcdeABCDE12345foo"
+
+[Team.bar] # Second Team
+ID="T01234BAR"
+URL="https://bar.slack.com/services/hooks/incoming-webhook?token=12345abcdeABCDE12345bar"
+
+[[Mapping]]
+FromTeam="foo"
+FromChannel="#friends"
+ToTeam="bar"
+ToChannel="#friends"
+
+[[Mapping]]
+FromTeam="bar"
+FromChannel="#friends"
+ToTeam="foo"
+ToChannel="#friends"
