@@ -62,6 +62,8 @@ var teams=make(map[TeamName]Team)
 var team_namen=make(map[TeamID]TeamName)
 var mapping=make(map[MappingID][]Destination)
 
+var echos=0
+
 func AddMapping(from_team TeamName, from_channel Channel, to_team TeamName, to_channel Channel) {
 	id:=MappingID{
 		id:teams[from_team].id,
@@ -117,6 +119,7 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 
 	user_name:=r.PostFormValue("user_name");
 	if(user_name=="slackbot") {
+		echos++
 		w.WriteHeader(http.StatusNoContent);
 		return
 	}
@@ -138,6 +141,11 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 
 	if(msg_body=="+date") {
 		BotAnswers(w, time.Now().UTC().Format(time.RFC1123))
+		return
+	}
+
+	if(msg_body=="+echos") {
+		BotAnswers(w, fmt.Sprintf("Echos: %d",echos))
 		return
 	}
 
