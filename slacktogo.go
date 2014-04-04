@@ -91,12 +91,15 @@ func NoCache(w http.ResponseWriter) {
 }
 
 func BotAnswers(w http.ResponseWriter, text string) {
+/*
+	// Alternativ, but I do not like it here!
 	type Answer struct {
 		Text string `json:"text"`
 	}
 	tmp:=Answer{text}
+ */
 
-	//tmp := map[string]interface{}{"text": text }
+	tmp := map[string]interface{}{"text": text }
 
 	js, err := json.Marshal(tmp)
 	if err != nil {
@@ -175,15 +178,36 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, dst := range dsts {
-		tmp := map[string]interface{}{
+		payload := map[string]interface{}{
 			"channel": dst.channel,
 			"username": fmt.Sprintf("*%s",user_name),
 			"text": msg_body,
 			"icon_emoji": ":twisted_rightwards_arrows:" }
-		res, _ := json.Marshal(tmp)
+		js, err := json.Marshal(payload)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+/*
+		// Alternativ (but I do not really like it
+
+		type Payload struct {
+			Channel Channel `json:"channel"`
+			Username string `json:"username"`
+			Text string `json:"text"`
+			Icon_Emoji string `json:"icon_emoji"`
+		}
+
+		js, _ := json.Marshal(Payload{
+			dst.channel,
+			fmt.Sprintf("*%s",user_name),
+			msg_body,
+			":twisted_rightwards_arrows:"})
+*/
 
 		resp, err := http.PostForm(dst.url,
-			url.Values{"payload": { string(res)}})
+			url.Values{"payload": { string(js)}})
 		if(err!=nil) {
 			w.Header().Set("Content-Type", "application/json")
 			tmp := map[string]interface{}{"text": fmt.Sprintf("Error: %q!",err.Error()) }
