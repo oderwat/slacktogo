@@ -132,7 +132,7 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s %s / %s: %q\n",team_id,from_channel,user_name,msg_body)
 
 	if(msg_body=="+info") {
-		BotAnswers(w, "This is SlackToGo Server V0.1.1 (c) METATEXX GmbH 2014 - Written by Hans Raaf")
+		BotAnswers(w, "This is SlackToGo Server V0.2.0 (c) METATEXX GmbH 2014 - Written by Hans Raaf")
 		return
 	}
 
@@ -178,6 +178,7 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(resp)
 		}
 
+		resp.Body.Close();
 	}
 
 	return
@@ -345,6 +346,7 @@ func msgCreator() {
 			if (resp.StatusCode != 200) {
 				fmt.Println(resp)
 			}
+			resp.Body.Close();
 		}
 	}
 }
