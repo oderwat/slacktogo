@@ -97,6 +97,8 @@ func BotAnswers(w http.ResponseWriter, text string) {
 }
 
 func OnRequest(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
 	NoCache(w)	// well we never want it cached!
 
 	team_id:=TeamID(r.PostFormValue("team_id"))
@@ -130,7 +132,7 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s %s / %s: %q\n",team_id,from_channel,user_name,msg_body)
 
 	if(msg_body=="+info") {
-		BotAnswers(w, "This is SlackToGo Server (c) METATEXX GmbH 2014 - Written by Hans Raaf")
+		BotAnswers(w, "This is SlackToGo Server V0.1.1 (c) METATEXX GmbH 2014 - Written by Hans Raaf")
 		return
 	}
 
