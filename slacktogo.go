@@ -148,7 +148,7 @@ func OnRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("%s %s / %s: %q\n",team_id,from_channel,user_name,msg_body)
 
 	if(msg_body=="+info") {
-		BotAnswers(w, "This is SlackToGo Server V0.2.0 (c) METATEXX GmbH 2014 - Written by Hans Raaf")
+		BotAnswers(w, "This is SlackToGo Server V0.2.1 (c) METATEXX GmbH 2014 - Written by Hans Raaf")
 		return
 	}
 
@@ -366,8 +366,12 @@ func main() {
 	}
 }
 
+/*
 func msgCreator() {
 	logit.Info("Notifying all target teams and channels!")
+
+	// wait a little moment so the server can start up for sure
+	time.Sleep(time.Millisecond * 2000)
 
 	for _, all := range mapping {
 		for _, dst := range all {
@@ -392,6 +396,7 @@ func msgCreator() {
 		}
 	}
 }
+*/
 
 func doWork() {
 	logit.Info("SlackToGo Server started!")
@@ -405,7 +410,7 @@ func doWork() {
 		AddMapping(mp.FromTeam,mp.FromChannel,mp.ToTeam,mp.ToChannel)
 	}
 
-	msgCreator()
+	//go msgCreator() // will notify every receiver after 5 seconds
 
 	http.HandleFunc("/", OnRequest)
 
