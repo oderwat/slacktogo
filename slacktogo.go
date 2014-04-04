@@ -289,6 +289,19 @@ func main() {
 				return
 			}
 			fmt.Printf("Service %q stopped.\n", displayName)
+		case "restart":
+			err = s.Stop()
+			if err != nil {
+				fmt.Printf("Failed to stop: %s\n", err)
+				return
+			}
+			fmt.Printf("Service %q stopped.\n", displayName)
+			err = s.Start()
+			if err != nil {
+				fmt.Printf("Failed to start: %s\n", err)
+				return
+			}
+			fmt.Printf("Service %q started.\n", displayName)
 		case "check":
 			checkConfig()
 		case "run":
