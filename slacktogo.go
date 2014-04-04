@@ -91,10 +91,20 @@ func NoCache(w http.ResponseWriter) {
 }
 
 func BotAnswers(w http.ResponseWriter, text string) {
+	type Answer struct {
+		Text string `json:"text"`
+	}
+	tmp:=Answer{text}
+
+	//tmp := map[string]interface{}{"text": text }
+
+	js, err := json.Marshal(tmp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	tmp := map[string]interface{}{"text": text }
-	res, _ := json.Marshal(tmp)
-	fmt.Fprintf(w, string(res));
+	w.Write(js);
 	return
 }
 
