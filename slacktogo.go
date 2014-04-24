@@ -2,18 +2,18 @@
 package main
 
 import (
+	"bitbucket.org/kardianos/osext"
+	"bitbucket.org/kardianos/service"
+	"encoding/json"
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"log"
-	"os"
 	"net/http"
 	"net/url"
-	"time"
-	"strings"
-	"encoding/json"
-	"bitbucket.org/kardianos/service"
-	"bitbucket.org/kardianos/osext"
-	"github.com/BurntSushi/toml"
+	"os"
 	"path"
+	"strings"
+	"time"
 )
 
 type TeamID string
@@ -21,85 +21,85 @@ type TeamName string
 type Channel string
 
 type Team struct {
-	id TeamID
+	id  TeamID
 	url string
 }
 
 type Destination struct {
-	url string
+	url     string
 	channel Channel
 }
 
 type MappingID struct {
-	id TeamID
+	id      TeamID
 	channel Channel
 }
 
 // Special Structures for the config parsing
 
 type configTeam struct {
-	ID TeamID
+	ID  TeamID
 	URL string
 }
 
 type configMapping struct {
-	FromTeam TeamName
+	FromTeam    TeamName
 	FromChannel Channel
-	ToTeam TeamName
-	ToChannel Channel
+	ToTeam      TeamName
+	ToChannel   Channel
 }
 
 type tomlConfig struct {
 	BindAddr string
-	Port uint16
-	SSLCrt string
-	SSLKey string
-	Teams map[TeamName]configTeam `toml:"team"`
-	Mappings []configMapping `toml:"mapping"`
+	Port     uint16
+	SSLCrt   string
+	SSLKey   string
+	Teams    map[TeamName]configTeam `toml:"team"`
+	Mappings []configMapping         `toml:"mapping"`
 }
 
-var teams=make(map[TeamName]Team)
-var team_namen=make(map[TeamID]TeamName)
-var mapping=make(map[MappingID][]Destination)
+var teams = make(map[TeamName]Team)
+var team_namen = make(map[TeamID]TeamName)
+var mapping = make(map[MappingID][]Destination)
 
-var echos=0
+var echos = 0
 
 func AddMapping(from_team TeamName, from_channel Channel, to_team TeamName, to_channel Channel) {
-	id:=MappingID{
-		id:teams[from_team].id,
-		channel:from_channel,
+	id := MappingID{
+		id:      teams[from_team].id,
+		channel: from_channel,
 	}
-	mapping[id]=append(mapping[id],Destination{
-			url: teams[to_team].url,
-			channel: to_channel })
+	mapping[id] = append(mapping[id], Destination{
+		url:     teams[to_team].url,
+		channel: to_channel})
 }
 
 func AddTeam(name TeamName, id TeamID, url string) {
-	teams[name]=Team{
-		id: id,
-		url: url }
-	team_namen[id]=name
+	teams[name] = Team{
+		id:  id,
+		url: url}
+	team_namen[id] = name
 }
 
 func NoCache(w http.ResponseWriter) {
-	h:=w.Header()
-	h.Add("Expires","Mon, 1 Jan 2000 00:00:00 UTC")
-	h.Add("Last-Modified",time.Now().UTC().Format(time.RFC1123))
+	h := w.Header()
+	h.Add("Expires", "Mon, 1 Jan 2000 00:00:00 UTC")
+	h.Add("Last-Modified", time.Now().UTC().Format(time.RFC1123))
 	h.Add("Cache-Control", "no-store, no-cache, must-revalidate")
 	//h.Add("Cache-Control", "post-check=0, pre-check=0");
-	h.Add("Pragma","no-cache")
+	h.Add("Pragma", "no-cache")
 }
 
 func BotAnswers(w http.ResponseWriter, text string) {
-/*
-	// Alternativ, but I do not like it here!
-	type Answer struct {
-		Text string `json:"text"`
-	}
-	tmp:=Answer{text}
- */
+	/*
+		// Alternativ, but I do not like it here!
+		type Answer struct {
+			Text string `json:"text"`
+		}
+		tmp:=Answer{text}
+	*/
 
-	tmp := map[string]interface{}{"text": text }
+	tmp := map[string]interface{}{"text": text}
 
 	js, err := json.Marshal(tmp)
 	if err != nil {
@@ -107,130 +107,130 @@ func BotAnswers(w http.ResponseWriter, text string) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(js);
+	w.Write(js)
 	return
 }
 
 func OnRequest(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	NoCache(w)	// well we never want it cached!
+	NoCache(w) // well we never want it cached!
 
-	team_id:=TeamID(r.PostFormValue("team_id"))
+	team_id := TeamID(r.PostFormValue("team_id"))
 
-	if(team_id=="") {
+	if team_id == "" {
 		w.WriteHeader(http.StatusPreconditionFailed)
 		fmt.Fprintf(w, "Illegal access to Slackgate... (c) METATEXX GmbH 2014")
 		return
 	}
 
-	from_channel:=Channel("#"+r.PostFormValue("channel_name"))
-	mapping_id:=MappingID{
-		id: team_id,
+	from_channel := Channel("#" + r.PostFormValue("channel_name"))
+	mapping_id := MappingID{
+		id:      team_id,
 		channel: from_channel,
 	}
 
-	user_name:=r.PostFormValue("user_name");
-	if(user_name=="slackbot") {
+	user_name := r.PostFormValue("user_name")
+	if user_name == "slackbot" {
 		echos++
-		w.WriteHeader(http.StatusNoContent);
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	dsts, ok:=mapping[mapping_id]
-	if(! ok) {
-		BotAnswers(w, fmt.Sprintf("Unknown Team: %q",mapping_id))
+	dsts, ok := mapping[mapping_id]
+	if !ok {
+		BotAnswers(w, fmt.Sprintf("Unknown Team: %q", mapping_id))
 		return
 	}
 
-	msg_body:=r.PostFormValue("text");
+	msg_body := r.PostFormValue("text")
 
-	fmt.Printf("%s %s / %s: %q\n",team_id,from_channel,user_name,msg_body)
+	fmt.Printf("%s %s / %s: %q\n", team_id, from_channel, user_name, msg_body)
 
-	if(msg_body=="+info") {
+	if msg_body == "+info" {
 		BotAnswers(w, "This is SlackToGo Server V0.2.1 (c) METATEXX GmbH 2014 - Written by Hans Raaf")
 		return
 	}
 
-	if(msg_body=="+date") {
+	if msg_body == "+date" {
 		BotAnswers(w, time.Now().UTC().Format(time.RFC1123))
 		return
 	}
 
-	if(msg_body=="+echos") {
-		BotAnswers(w, fmt.Sprintf("Echos: %d",echos))
+	if msg_body == "+echos" {
+		BotAnswers(w, fmt.Sprintf("Echos: %d", echos))
 		return
 	}
 
-	if(msg_body=="+routing") {
-		out:=make([]string,0)
+	if msg_body == "+routing" {
+		out := make([]string, 0)
 		for mid, maps := range mapping {
-			if(len(out)>0) {
-				out=append(out,"");
+			if len(out) > 0 {
+				out = append(out, "")
 			}
-			out=append(out,fmt.Sprintf("Routing messages from %q (%s) %s to:", team_namen[mid.id], mid.id, mid.channel));
+			out = append(out, fmt.Sprintf("Routing messages from %q (%s) %s to:", team_namen[mid.id], mid.id, mid.channel))
 			for idx, dst := range maps {
-				out=append(out,fmt.Sprintf("> %d:  %q @ %q",idx,dst.url, dst.channel));
+				out = append(out, fmt.Sprintf("> %d:  %q @ %q", idx, dst.url, dst.channel))
 			}
 		}
-		BotAnswers(w, strings.Join(out,"\n"))
+		BotAnswers(w, strings.Join(out, "\n"))
 		return
 	}
 
 	for _, dst := range dsts {
 		payload := map[string]interface{}{
-			"channel": dst.channel,
-			"username": fmt.Sprintf("*%s",user_name),
-			"text": msg_body,
-			"icon_emoji": ":twisted_rightwards_arrows:" }
+			"channel":    dst.channel,
+			"username":   fmt.Sprintf("*%s", user_name),
+			"text":       msg_body,
+			"icon_emoji": ":twisted_rightwards_arrows:"}
 		js, err := json.Marshal(payload)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-/*
-		// Alternativ (but I do not really like it
+		/*
+			// Alternativ (but I do not really like it
 
-		type Payload struct {
-			Channel Channel `json:"channel"`
-			Username string `json:"username"`
-			Text string `json:"text"`
-			Icon_Emoji string `json:"icon_emoji"`
-		}
+			type Payload struct {
+				Channel Channel `json:"channel"`
+				Username string `json:"username"`
+				Text string `json:"text"`
+				Icon_Emoji string `json:"icon_emoji"`
+			}
 
-		js, _ := json.Marshal(Payload{
-			dst.channel,
-			fmt.Sprintf("*%s",user_name),
-			msg_body,
-			":twisted_rightwards_arrows:"})
-*/
+			js, _ := json.Marshal(Payload{
+				dst.channel,
+				fmt.Sprintf("*%s",user_name),
+				msg_body,
+				":twisted_rightwards_arrows:"})
+		*/
 
 		resp, err := http.PostForm(dst.url,
-			url.Values{"payload": { string(js)}})
-		if(err!=nil) {
+			url.Values{"payload": {string(js)}})
+		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
-			tmp := map[string]interface{}{"text": fmt.Sprintf("Error: %q!",err.Error()) }
+			tmp := map[string]interface{}{"text": fmt.Sprintf("Error: %q!", err.Error())}
 			res, _ := json.Marshal(tmp)
-			fmt.Fprintf(w, string(res));
+			fmt.Fprintf(w, string(res))
 			return
 		}
 
-		if(resp.StatusCode!=200) {
+		if resp.StatusCode != 200 {
 			fmt.Println(resp)
 		}
 
-		resp.Body.Close();
+		resp.Body.Close()
 	}
 
 	return
 }
 
 func checkConfig() {
-	fmt.Printf("BindAddr: %q\n",config.BindAddr)
-	fmt.Printf("Port: %d\n",config.Port)
-	fmt.Printf("SSL Certificate: %q\n",config.SSLCrt)
-	fmt.Printf("SSL Key: %q\n",config.SSLKey)
+	fmt.Printf("BindAddr: %q\n", config.BindAddr)
+	fmt.Printf("Port: %d\n", config.Port)
+	fmt.Printf("SSL Certificate: %q\n", config.SSLCrt)
+	fmt.Printf("SSL Key: %q\n", config.SSLKey)
 
 	fmt.Println("\nTeams:")
 	for name, team := range config.Teams {
@@ -260,10 +260,10 @@ var config tomlConfig
 func main() {
 
 	// Config Defaults
-	config.BindAddr="[::]"
-	config.Port=8080
-	config.SSLCrt=""
-	config.SSLKey=""
+	config.BindAddr = "[::]"
+	config.Port = 8080
+	config.SSLCrt = ""
+	config.SSLKey = ""
 
 	// The "go run" command creates the executable in the tmp dir of the system
 	// the "service" wrapper runs a strange current dir
@@ -280,8 +280,8 @@ func main() {
 	}
 
 	// trying to find the config file
-	if _, err := toml.DecodeFile(path.Join(prgdir,"config.toml"), &config); err != nil {
-		if _, err := toml.DecodeFile(path.Join(curdir,"config.toml"), &config); err != nil {
+	if _, err := toml.DecodeFile(path.Join(prgdir, "config.toml"), &config); err != nil {
+		if _, err := toml.DecodeFile(path.Join(curdir, "config.toml"), &config); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -353,14 +353,14 @@ func main() {
 		return
 	}
 	err = s.Run(func() error {
-			// start
-			go doWork()
-			return nil
-		}, func() error {
-			// stop
-			stopWork()
-			return nil
-		})
+		// start
+		go doWork()
+		return nil
+	}, func() error {
+		// stop
+		stopWork()
+		return nil
+	})
 	if err != nil {
 		logit.Error(err.Error())
 	}
@@ -403,22 +403,22 @@ func doWork() {
 
 	// SetupRouting
 	for name, team := range config.Teams {
-		AddTeam(name,team.ID,team.URL)
+		AddTeam(name, team.ID, team.URL)
 	}
 
 	for _, mp := range config.Mappings {
-		AddMapping(mp.FromTeam,mp.FromChannel,mp.ToTeam,mp.ToChannel)
+		AddMapping(mp.FromTeam, mp.FromChannel, mp.ToTeam, mp.ToChannel)
 	}
 
 	//go msgCreator() // will notify every receiver after 5 seconds
 
 	http.HandleFunc("/", OnRequest)
 
-	if(config.SSLCrt=="" || config.SSLKey=="") {
-		log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d",config.BindAddr,config.Port),
+	if config.SSLCrt == "" || config.SSLKey == "" {
+		log.Fatal(http.ListenAndServe(fmt.Sprintf("%s:%d", config.BindAddr, config.Port),
 			nil))
 	} else {
-		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf("%s:%d",config.BindAddr,config.Port),
+		log.Fatal(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", config.BindAddr, config.Port),
 			config.SSLCrt,
 			config.SSLKey,
 			nil))
